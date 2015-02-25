@@ -1,0 +1,10 @@
+#Lockfiles
+*~
+
+#Java generated Files
+.settings/
+.classpath
+.project
+
+#Binarys
+bin/
