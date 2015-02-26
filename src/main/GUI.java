@@ -5,13 +5,14 @@ import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
-import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -25,6 +26,12 @@ public class GUI extends JFrame{
 	 * (effects the speed of objects moving
 	 */
 	final float fps = 60;
+
+	final int BallLeftID = 0;
+	final int BallRightID = 1;
+	final int FederLeftID = 2;
+	final int FederRightID = 3;
+	final int Mitte = 250;
 
 	/**
 	 * main method<br>
@@ -47,13 +54,11 @@ public class GUI extends JFrame{
 	JButton BasketStart;
 	JButton FederStart;
 	JButton reset;
-	JPanel SimuPnl;
-	Ball BallLeft;
-	Ball BallRight;
-	Feder FederLeft;
-	Feder FederRight;
+	SimuPanel SimuPnl;
 	Thread BasketThread;
 	Thread FederThread;
+	Rectangle[] Coordinates;
+	int counter;
 
 	GUI(int width, int height){
 		// init GUI
@@ -63,6 +68,12 @@ public class GUI extends JFrame{
 		SpringLayout l = new SpringLayout();
 		p = this.getContentPane();
 		setLayout(l);
+
+		// init Coordinates
+		Coordinates = new Rectangle[]{new Rectangle(49, 17, 66, 66), // BallLeft
+				new Rectangle(384, 17, 66, 66), // BallRight
+				new Rectangle(0, 45, 50, 10), // FederLeft
+				new Rectangle(450, 45, 50, 10)};// FederRight
 
 		// init comps
 		lbl1 = new JLabel(
@@ -81,8 +92,6 @@ public class GUI extends JFrame{
 		reset.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e){
 				reset();
-				BasketThread.interrupt();
-				FederThread.interrupt();
 
 				EnergyLoss.setEnabled(true);
 				BasketStart.setEnabled(true);
@@ -98,15 +107,13 @@ public class GUI extends JFrame{
 		BasketStart.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e){
 				reset();
-				FederLeft.setVisible(true);
-				FederRight.setVisible(true);
 				EnergyLoss.setEnabled(false);
 				BasketStart.setEnabled(false);
 				FederStart.setEnabled(false);
+				BasketThread = new Thread(new BasketModell());
 				BasketThread.start();
 			}
 		});
-		BasketThread = new Thread(new BasketModell());
 
 		FederStart = new JButton("Federmodell");
 		FederStart.setBackground(Color.white);
@@ -116,28 +123,19 @@ public class GUI extends JFrame{
 		FederStart.addActionListener(new ActionListener(){
 			public void actionPerformed(ActionEvent e){
 				reset();
-				FederLeft.setVisible(true);
-				FederRight.setVisible(true);
 				EnergyLoss.setEnabled(false);
 				BasketStart.setEnabled(false);
 				FederStart.setEnabled(false);
+				FederThread = new Thread(new FederModell());
 				FederThread.start();
 			}
 		});
-		FederThread = new Thread(new FederModell());
-
 		// creating and filling the simulation panel
-		SimuPnl = new JPanel();
+		SimuPnl = new SimuPanel();
 		SimuPnl.setPreferredSize(new Dimension(500, 100));
 		SimuPnl.setBorder(BorderFactory.createLineBorder(Color.black));
 		SimuPnl.setLayout(null);
-
 		reset();
-
-		SimuPnl.add(FederLeft);
-		SimuPnl.add(FederRight);
-		SimuPnl.add(BallRight);
-		SimuPnl.add(BallLeft);
 
 		// putting constraints of GUI
 		l.putConstraint(SpringLayout.HORIZONTAL_CENTER, lbl1, 0,
@@ -177,83 +175,35 @@ public class GUI extends JFrame{
 	 * -->(re)creating and placing components on SimulationPanel
 	 */
 	private void reset(){
-		FederLeft = new Feder(50, 10, 0);
-		Dimension size = FederLeft.getPreferredSize();
-		FederLeft.setBounds(0, 45, size.width, size.height);
+		if (FederThread != null)
+			FederThread.interrupt();
+		if (BasketThread != null)
+			BasketThread.interrupt();
+		
+		counter = 0;
 
-		FederRight = new Feder(50, 10, 1);
-		size = FederRight.getPreferredSize();
-		FederRight.setBounds(450, 45, size.width, size.height);
+		Coordinates[BallLeftID] = new Rectangle(50 - 1, 17, 66, 66);
 
-		BallLeft = new Ball(66, 66, 2);
-		size = BallLeft.getPreferredSize();
-		BallLeft.setBounds(50 - 1, 17, size.width, size.height);
+		Coordinates[BallRightID] = new Rectangle(384, 17, 66, 66);
 
-		BallRight = new Ball(66, 66, 3);
-		size = BallRight.getPreferredSize();
-		BallRight.setBounds(384, 17, size.width, size.height);
-	}
+		Coordinates[FederLeftID] = new Rectangle(0, 45, 50, 10);
 
-	/**
-	 * moves the component to x
-	 * @param comp - the <code>JComponent</code> that should be moved
-	 * @param x - the x coordinate of the new components position
-	 * @param Ball - true if the component is instance of class
-	 *        <code>Ball</code>
-	 * @param id - the id of <code>comp</code>
-	 */
-	private synchronized void moveComponent(JComponent comp, Rectangle r, int id){
-		moveComponent(comp, r.x, r.y, r.width, r.height, id);
-	}
+		Coordinates[FederRightID] = new Rectangle(450, 45, 50, 10);
 
-	/**
-	 * moves the component to x
-	 * @param comp - the <code>JComponent</code> that should be moved
-	 * @param x - the x coordinate of the new components position
-	 * @param Ball - true if the component is instance of class
-	 *        <code>Ball</code>
-	 * @param id - the id of <code>comp</code>
-	 */
-	private synchronized void moveComponent(JComponent comp, int x, int y,
-			int w, int h, int id){
-		int index = getIndex(comp, id);
-		SimuPnl.remove(index);
-		if (id >= 2){
-			comp = new Ball(w, h, id);
-		} else{
-			comp = new Feder(w, h, id);
-		}
-		comp.setLocation(x, y);
-		SimuPnl.add(comp);
-		SimuPnl.revalidate();
 		SimuPnl.repaint();
-		comp.revalidate();
 	}
 
 	/**
-	 * returns the index of the component on the SimulationPanel
-	 * @param comp -
-	 *        <code>JComponent<code> of which the index should be returned needs to be on the SimulationPanel
-	 * @return the id of the given <code>comp</code>
+	 * moves the component to x
+	 * @param comp - the <code>JComponent</code> that should be moved
+	 * @param x - the x coordinate of the new components position
+	 * @param Ball - true if the component is instance of class
+	 *        <code>Ball</code>
+	 * @param id - the id of <code>comp</code>
 	 */
-	private int getIndex(JComponent comp, int id){
-		if (id >= 2)
-			for (int i = 0; i < SimuPnl.getComponentCount(); i++){
-				if (SimuPnl.getComponent(i).getClass() == comp.getClass()
-						&& ((Ball) SimuPnl.getComponent(i)).getID() == ((Ball) comp)
-								.getID()){
-					return i;
-				}
-			}
-		else
-			for (int i = 0; i < SimuPnl.getComponentCount(); i++){
-				if (SimuPnl.getComponent(i).getClass() == comp.getClass()
-						&& ((Feder) SimuPnl.getComponent(i)).getID() == ((Feder) comp)
-								.getID()){
-					return i;
-				}
-			}
-		return -1;
+	private synchronized void moveComponent(int id, Rectangle r){
+		Coordinates[id] = r;
+		SimuPnl.repaint();
 	}
 
 	//
@@ -267,11 +217,13 @@ public class GUI extends JFrame{
 	class BasketModell implements Runnable{
 		public void run(){
 			long time;
-			while (true){
+			while (!Thread.interrupted()){
 				time = System.currentTimeMillis();
 
 				// the action todo
+				moveComponent(BallLeftID, Coordinates[BallLeftID]);
 
+				Coordinates[BallLeftID].x++;
 				// timing
 				try{
 					Thread.sleep((long) ((1000f / fps) - (System
@@ -280,79 +232,58 @@ public class GUI extends JFrame{
 					break;
 				}
 			}
+			FederThread.interrupt();
 		}
 	}
-
-	Rectangle posBallLeft = new Rectangle();
-	Rectangle posFederLeft = new Rectangle();
-	Rectangle posBallRight = new Rectangle();
-	Rectangle posFederRight = new Rectangle();
-
-	double v = 0;
-	boolean Aufprall = false;
-	int Mitte = 250;
-	int counter = 0;
 
 	class FederModell implements Runnable{
 		public void run(){
 			long time;
 			int EL = (int) EnergyLoss.getValue();
-			posBallLeft.x = 0;
-			posBallLeft.y = BallLeft.getY();
-			posBallLeft.height = BallLeft.getHeight();
-			posBallLeft.width = BallLeft.getWidth();
 
-			posFederLeft.x = FederLeft.getX();
-			posFederLeft.y = FederLeft.getY();
-			posFederLeft.height = FederLeft.getHeight();
-			posFederLeft.width = posBallLeft.x - posFederLeft.x;
-			
-			posBallRight.x = 450-66;
-			posBallRight.y = BallRight.getY();
-			posBallRight.height = BallRight.getHeight();
-			posBallRight.width = BallRight.getWidth();
+			double v = 0;// velocity
+			boolean Aufprall = false;// true if they collide
 
-			posFederLeft.x = posBallRight.x+66;
-			posFederRight.y = FederRight.getY();
-			posFederRight.height = FederRight.getHeight();
-			posFederRight.width = SimuPnl.getWidth() -  posFederRight.x;
-
-			while (true){
+			while (!Thread.interrupted()){
 				time = System.currentTimeMillis();
-				moveComponent(BallLeft, posBallLeft, BallLeft.getID());
-				moveComponent(FederLeft, posFederLeft, FederLeft.getID());
-				moveComponent(BallRight, posBallRight, BallRight.getID());
-				moveComponent(FederRight, posFederRight, FederRight.getID());
+				moveComponent(BallLeftID, Coordinates[BallLeftID]);
+				moveComponent(FederLeftID, Coordinates[FederLeftID]);
+				moveComponent(BallRightID, Coordinates[BallRightID]);
+				moveComponent(FederRightID, Coordinates[FederRightID]);
 
-				posBallLeft.x += Math.round(v);
-				posFederLeft.width += Math.round(v);
-				
-				posBallRight.x -= Math.round(v);
-				posFederRight.x -= Math.round(v);
-				posFederRight.width += Math.round(v);
+				Coordinates[BallLeftID].x = (int) (Coordinates[BallLeftID].x + Math.round(v));
+				Coordinates[FederLeftID].width = Coordinates[BallLeftID].x;
+
+				Coordinates[BallRightID].x = (int) (Coordinates[BallRightID].x - Math.round(v));
+				Coordinates[FederRightID].x = Coordinates[BallRightID].x + 66;
+				Coordinates[FederRightID].width = SimuPnl.getWidth() - Coordinates[FederRightID].x;
+
 				// calculating new v
 				if (!Aufprall){
-					v += Math.pow((Mitte - (posBallLeft.x + 66))
+					v = v + Math.pow((Mitte - (Coordinates[BallLeftID].x))
 							/ (double) (Mitte - 50), 2) * 0.5;
 				} else{
-					if (counter == Math.round(EL * 0.25))
-						break;
-					v *= -EL/100;
-					Aufprall = false;
+					v = -v * EL / 100;
+					Coordinates[BallLeftID].x = Mitte - 70;
+					Coordinates[BallRightID].x = Mitte - 5;
+					counter++;
+					if (counter > Math.round(EL * 0.2)) break;
 				}
-				if (posBallLeft.x + 66 >= Mitte)
-					Aufprall = true;
+				Aufprall = (Coordinates[BallLeftID].x + 66 >= Mitte)
+						? true
+						: false;
 
 				// timing
 				try{
 					Thread.sleep((long) ((1000f / fps) - (System
 							.currentTimeMillis() - time)));
-					counter++;
 				} catch (Exception e){
 					break;
 				}
-				System.out.println(posBallLeft.x + " " + v);
+				System.out.println(counter + " " + v);
 			}
+			System.err.println("Simulation ended");
+			FederThread.interrupt();
 		}
 	}
 
@@ -364,41 +295,34 @@ public class GUI extends JFrame{
 	//
 	//
 
-	class Ball extends JComponent{
-		int id;
-
-		public Ball(int width, int height, int id){
-			super();
-			setSize(new Dimension(width, height));
-			this.id = id;
-		}
-
-		public int getID(){
-			return id;
-		}
-
+	class SimuPanel extends JPanel{
 		public void paint(Graphics g){
-			g.setColor(Color.black);
-			g.fillOval(0, 0, this.getWidth(), this.getHeight());
-		}
-	}
+			super.paint(g);
+			Graphics2D g2d = (Graphics2D) g;
+			g2d.setColor(Color.black);
+			g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+					RenderingHints.VALUE_ANTIALIAS_ON);
+			// BallLeft
+			g2d.fillOval(Coordinates[BallLeftID].x, Coordinates[BallLeftID].y,
+					Coordinates[BallLeftID].width,
+					Coordinates[BallLeftID].height);
 
-	class Feder extends JComponent{
-		int id;
+			// BallRight
+			g2d.fillOval(Coordinates[BallRightID].x,
+					Coordinates[BallRightID].y, Coordinates[BallRightID].width,
+					Coordinates[BallRightID].height);
 
-		public Feder(int width, int height, int id){
-			super();
-			setPreferredSize(new Dimension(width, height));
-			this.id = id;
-		}
+			// FederLeft (fillOvel to drawRect if rectangle)
+			g2d.fillOval(Coordinates[FederLeftID].x,
+					Coordinates[FederLeftID].y, Coordinates[FederLeftID].width,
+					Coordinates[FederLeftID].height);
 
-		public int getID(){
-			return id;
-		}
+			// FederRight (fillOvel to drawRect if rectangle)
+			g2d.fillOval(Coordinates[FederRightID].x,
+					Coordinates[FederRightID].y,
+					Coordinates[FederRightID].width,
+					Coordinates[FederRightID].height);
 
-		public void paint(Graphics g){
-			g.setColor(Color.black);
-			g.drawRect(0, 0, this.getWidth() - 1, this.getHeight() - 1);
 		}
 	}
 }
