@@ -32,6 +32,7 @@ public class GUI extends JFrame{
 	final int FederLeftID = 2;
 	final int FederRightID = 3;
 	final int Mitte = 250;
+	boolean Feder = true;
 
 	/**
 	 * main method<br>
@@ -175,11 +176,11 @@ public class GUI extends JFrame{
 	 * -->(re)creating and placing components on SimulationPanel
 	 */
 	private void reset(){
-		if (FederThread != null)
-			FederThread.interrupt();
-		if (BasketThread != null)
-			BasketThread.interrupt();
+		Feder = true;
 		
+		if (FederThread != null) FederThread.interrupt();
+		if (BasketThread != null) BasketThread.interrupt();
+
 		counter = 0;
 
 		Coordinates[BallLeftID] = new Rectangle(50 - 1, 17, 66, 66);
@@ -216,32 +217,66 @@ public class GUI extends JFrame{
 
 	class BasketModell implements Runnable{
 		public void run(){
+			Feder = false;
+
 			long time;
+			int EL = (int) EnergyLoss.getValue();
+			final double a = 0.05;
+
+			double v = 0;// velocity
+			boolean Aufprall = false;// true if they collide
+
 			while (!Thread.interrupted()){
 				time = System.currentTimeMillis();
-
-				// the action todo
 				moveComponent(BallLeftID, Coordinates[BallLeftID]);
+				moveComponent(BallRightID, Coordinates[BallRightID]);
 
-				Coordinates[BallLeftID].x++;
+				Coordinates[BallLeftID].x = (int) (Coordinates[BallLeftID].x + Math
+						.round(v));
+				Coordinates[FederLeftID].width = Coordinates[BallLeftID].x;
+
+				Coordinates[BallRightID].x = (int) (Coordinates[BallRightID].x - Math
+						.round(v));
+				Coordinates[FederRightID].x = Coordinates[BallRightID].x + 66;
+				Coordinates[FederRightID].width = SimuPnl.getWidth()
+						- Coordinates[FederRightID].x;
+
+				// calculating new v
+				if (!Aufprall){
+					v = v + a;
+				} else{
+					v = -v * EL / 100;
+					Coordinates[BallLeftID].x = Mitte - 70;
+					Coordinates[BallRightID].x = Mitte - 5;
+					counter++;
+					if (counter > Math.round(EL * 0.14)) break;
+				}
+				Aufprall = (Coordinates[BallLeftID].x + 66 >= Mitte)
+						? true
+						: false;
+
 				// timing
 				try{
 					Thread.sleep((long) ((1000f / fps) - (System
 							.currentTimeMillis() - time)));
-				} catch (InterruptedException e){
+				} catch (Exception e){
 					break;
 				}
+				System.out.println(counter + " " + v);
 			}
-			FederThread.interrupt();
+			System.err.println("Simulation ended");
+			BasketThread.interrupt();
 		}
 	}
 
 	class FederModell implements Runnable{
 		public void run(){
+			Feder = true;
+
 			long time;
 			int EL = (int) EnergyLoss.getValue();
 
-			double v = 0;// velocity
+			double v = 0.2;// velocity
 			boolean Aufprall = false;// true if they collide
 
 			while (!Thread.interrupted()){
@@ -251,17 +286,21 @@ public class GUI extends JFrame{
 				moveComponent(BallRightID, Coordinates[BallRightID]);
 				moveComponent(FederRightID, Coordinates[FederRightID]);
 
-				Coordinates[BallLeftID].x = (int) (Coordinates[BallLeftID].x + Math.round(v));
+				Coordinates[BallLeftID].x = (int) (Coordinates[BallLeftID].x + Math
+						.round(v));
 				Coordinates[FederLeftID].width = Coordinates[BallLeftID].x;
 
-				Coordinates[BallRightID].x = (int) (Coordinates[BallRightID].x - Math.round(v));
+				Coordinates[BallRightID].x = (int) (Coordinates[BallRightID].x - Math
+						.round(v));
 				Coordinates[FederRightID].x = Coordinates[BallRightID].x + 66;
-				Coordinates[FederRightID].width = SimuPnl.getWidth() - Coordinates[FederRightID].x;
+				Coordinates[FederRightID].width = SimuPnl.getWidth()
+						- Coordinates[FederRightID].x;
 
 				// calculating new v
 				if (!Aufprall){
-					v = v + Math.pow((Mitte - (Coordinates[BallLeftID].x))
-							/ (double) (Mitte - 50), 2) * 0.5;
+					v = v
+							+ Math.pow((Mitte - (Coordinates[BallLeftID].x))
+									/ (double) (Mitte - 50), 2) * 0.5;
 				} else{
 					v = -v * EL / 100;
 					Coordinates[BallLeftID].x = Mitte - 70;
@@ -312,16 +351,19 @@ public class GUI extends JFrame{
 					Coordinates[BallRightID].y, Coordinates[BallRightID].width,
 					Coordinates[BallRightID].height);
 
-			// FederLeft (fillOvel to drawRect if rectangle)
-			g2d.fillOval(Coordinates[FederLeftID].x,
-					Coordinates[FederLeftID].y, Coordinates[FederLeftID].width,
-					Coordinates[FederLeftID].height);
+			if (Feder){
+				// FederLeft (fillOvel to drawRect if rectangle)
+				g2d.fillOval(Coordinates[FederLeftID].x,
+						Coordinates[FederLeftID].y,
+						Coordinates[FederLeftID].width,
+						Coordinates[FederLeftID].height);
 
-			// FederRight (fillOvel to drawRect if rectangle)
-			g2d.fillOval(Coordinates[FederRightID].x,
-					Coordinates[FederRightID].y,
-					Coordinates[FederRightID].width,
-					Coordinates[FederRightID].height);
+				// FederRight (fillOvel to drawRect if rectangle)
+				g2d.fillOval(Coordinates[FederRightID].x,
+						Coordinates[FederRightID].y,
+						Coordinates[FederRightID].width,
+						Coordinates[FederRightID].height);
+			}
 
 		}
 	}
