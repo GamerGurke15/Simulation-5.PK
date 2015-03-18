@@ -273,6 +273,10 @@ public class GUI extends JFrame{
 		public void run(){
 			Feder = true;
 
+			/*
+			 * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+			 * Siehe Seite 10 Formel implement pls
+			 */
 			long time;
 			int EL = (int) EnergyLoss.getValue();
 
