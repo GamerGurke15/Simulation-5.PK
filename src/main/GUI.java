@@ -299,7 +299,7 @@ public class GUI extends JFrame{
 
 				// calculating new v
 				if (!Aufprall){
-					v = v + 0.0003f * Math.pow(Mitte - (Coordinates[BallLeftID].x + 66), 2);
+					v = v + 0.0003f * Math.pow(Mitte - (Coordinates[BallLeftID].x + 66), 2) / 2f;
 				} else{
 					System.out.println(System.currentTimeMillis() - AufprallTime);
 					AufprallTime = System.currentTimeMillis();
