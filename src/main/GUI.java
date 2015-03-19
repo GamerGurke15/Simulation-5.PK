@@ -115,8 +115,9 @@ public class GUI extends JFrame{
 				BasketThread.start();
 			}
 		});
+		BasketStart.setVisible(false);
 
-		FederStart = new JButton("Federmodell");
+		FederStart = new JButton("Start");
 		FederStart.setBackground(Color.white);
 		/**
 		 * ActionListener of FederModellButton
@@ -155,7 +156,7 @@ public class GUI extends JFrame{
 				SpringLayout.HORIZONTAL_CENTER, p);
 		l.putConstraint(SpringLayout.NORTH, FederStart, 10, SpringLayout.SOUTH,
 				EnergyLoss);
-		l.putConstraint(SpringLayout.WEST, FederStart, 5,
+		l.putConstraint(SpringLayout.HORIZONTAL_CENTER, FederStart, 0,
 				SpringLayout.HORIZONTAL_CENTER, p);
 		l.putConstraint(SpringLayout.NORTH, SimuPnl, 10, SpringLayout.SOUTH,
 				FederStart);
@@ -177,7 +178,7 @@ public class GUI extends JFrame{
 	 */
 	private void reset(){
 		Feder = true;
-		
+
 		if (FederThread != null) FederThread.interrupt();
 		if (BasketThread != null) BasketThread.interrupt();
 
@@ -272,17 +273,13 @@ public class GUI extends JFrame{
 	class FederModell implements Runnable{
 		public void run(){
 			Feder = true;
-
-			/*
-			 * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-			 * Siehe Seite 10 Formel implement pls
-			 */
 			long time;
 			int EL = (int) EnergyLoss.getValue();
 
 			double v = 0.2;// velocity
 			boolean Aufprall = false;// true if they collide
 
+			long AufprallTime = System.currentTimeMillis();
 			while (!Thread.interrupted()){
 				time = System.currentTimeMillis();
 				moveComponent(BallLeftID, Coordinates[BallLeftID]);
@@ -302,15 +299,15 @@ public class GUI extends JFrame{
 
 				// calculating new v
 				if (!Aufprall){
-					v = v
-							+ Math.pow((Mitte - (Coordinates[BallLeftID].x))
-									/ (double) (Mitte - 50), 2) * 0.5;
+					v = v + 0.0003f * Math.pow(Mitte - (Coordinates[BallLeftID].x + 66), 2);
 				} else{
+					System.out.println(System.currentTimeMillis() - AufprallTime);
+					AufprallTime = System.currentTimeMillis();
 					v = -v * EL / 100;
 					Coordinates[BallLeftID].x = Mitte - 70;
 					Coordinates[BallRightID].x = Mitte - 5;
 					counter++;
-					if (counter > Math.round(EL * 0.2)) break;
+					if (counter > Math.round(EL * 0.15)) break;
 				}
 				Aufprall = (Coordinates[BallLeftID].x + 66 >= Mitte)
 						? true
@@ -323,7 +320,7 @@ public class GUI extends JFrame{
 				} catch (Exception e){
 					break;
 				}
-				System.out.println(counter + " " + v);
+				// System.out.println(counter + " " + v);
 			}
 			System.err.println("Simulation ended");
 			FederThread.interrupt();
