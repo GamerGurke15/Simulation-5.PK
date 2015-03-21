@@ -79,7 +79,7 @@ public class GUI extends JFrame{
 		// init comps
 		lbl1 = new JLabel(
 				"<html><center>Verbleibende Energie nach einem Peak einstellen<br>"
-						+ "und gewünschtes Modell starten.</center></html>");
+						+ "und starten.</center></html>");
 
 		EnergyLoss = new JSpinner(new SpinnerNumberModel(80, 0, 100, 1));
 		EnergyLoss.setPreferredSize(new Dimension(50, 25));
